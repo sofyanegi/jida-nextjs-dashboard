@@ -1,6 +1,7 @@
 import AcmeLogo from '@/app/ui/acme-logo';
 import LoginForm from '@/app/ui/login-form';
 import { Suspense } from 'react';
+import SignIn from '../ui/sign-in-google';
 
 export default function LoginPage() {
   return (
@@ -13,6 +14,7 @@ export default function LoginPage() {
         </div>
         <Suspense>
           <LoginForm />
+          <SignIn />
         </Suspense>
       </div>
     </main>
