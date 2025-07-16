@@ -88,6 +88,31 @@ export async function deleteInvoice(id: string) {
 }
 
 export async function authenticate(prevState: string | undefined, formData: FormData) {
+  const token = formData.get('h-captcha-response') as string;
+  const hcaptchaSecret = process.env.HCAPTCHA_SECRET_KEY;
+
+  if (!hcaptchaSecret) {
+    console.error('HCAPTCHA_SECRET_KEY is not set');
+    return 'Server configuration error.';
+  }
+
+  if (!token) {
+    return 'Please complete the captcha.';
+  }
+
+  const params = new URLSearchParams();
+  params.append('response', token);
+  params.append('secret', hcaptchaSecret);
+
+  const verifyResponse = await fetch('https://api.hcaptcha.com/siteverify', {
+    method: 'POST',
+    body: params,
+  });
+  const data = await verifyResponse.json();
+  if (!data.success) {
+    console.log('hCaptcha verification failed:', data['error-codes']);
+    return 'Captcha verification failed. Please try again.';
+  }
   try {
     await signIn('credentials', formData);
   } catch (error) {
