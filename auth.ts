@@ -1,11 +1,12 @@
 import NextAuth from 'next-auth';
 import Credentials from 'next-auth/providers/credentials';
-import { authConfig } from './auth.config';
 import { z } from 'zod';
 import type { User } from '@/app/lib/definitions';
 import bcrypt from 'bcrypt';
 import postgres from 'postgres';
 import Google from 'next-auth/providers/google';
+import GitHub from 'next-auth/providers/github';
+import { SupabaseAdapter } from '@auth/supabase-adapter';
 
 const sql = postgres(process.env.POSTGRES_URL!, { ssl: 'require' });
 
@@ -20,7 +21,14 @@ async function getUser(email: string): Promise<User | undefined> {
 }
 
 export const { auth, signIn, signOut, handlers } = NextAuth({
-  ...authConfig,
+  pages: { signIn: '/login' },
+  session: { strategy: 'jwt', maxAge: 1 * 1 * 60 * 60 },
+  jwt: { maxAge: 1 * 1 * 60 * 60 },
+  secret: process.env.AUTH_SECRET,
+  adapter: SupabaseAdapter({
+    url: process.env.SUPABASE_URL!,
+    secret: process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  }),
   providers: [
     Credentials({
       async authorize(credentials) {
@@ -38,5 +46,27 @@ export const { auth, signIn, signOut, handlers } = NextAuth({
       },
     }),
     Google({ clientId: process.env.GOOGLE_CLIENT_ID, clientSecret: process.env.GOOGLE_CLIENT_SECRET }),
+    GitHub({ clientId: process.env.GITHUB_CLIENT_ID, clientSecret: process.env.GITHUB_CLIENT_SECRET }),
   ],
+  callbacks: {
+    authorized({ auth }) {
+      return !!auth?.user;
+    },
+    async redirect({ url, baseUrl }) {
+      const callbackUrl = url.includes('/login') ? baseUrl : url;
+      return callbackUrl;
+    },
+    async jwt({ token, user }) {
+      if (user) {
+        token.email = user.email;
+        token.name = user.name;
+      }
+      return token;
+    },
+    async session({ session, token }) {
+      session.user.email = token.email as string;
+      session.user.name = token.name as string;
+      return session;
+    },
+  },
 });
