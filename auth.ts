@@ -2,7 +2,7 @@ import NextAuth from 'next-auth';
 import Credentials from 'next-auth/providers/credentials';
 import { z } from 'zod';
 import type { User } from '@/app/lib/definitions';
-import bcrypt from 'bcrypt';
+import bcrypt from 'bcryptjs';
 import postgres from 'postgres';
 import Google from 'next-auth/providers/google';
 import GitHub from 'next-auth/providers/github';
@@ -22,8 +22,8 @@ async function getUser(email: string): Promise<User | undefined> {
 
 export const { auth, signIn, signOut, handlers } = NextAuth({
   pages: { signIn: '/login' },
-  session: { strategy: 'jwt', maxAge: 1 * 1 * 60 * 60 },
-  jwt: { maxAge: 1 * 1 * 60 * 60 },
+  session: { strategy: 'jwt', maxAge: 1 * 1 * 3 * 60 },
+  jwt: { maxAge: 1 * 1 * 3 * 60 },
   secret: process.env.AUTH_SECRET,
   adapter: SupabaseAdapter({
     url: process.env.SUPABASE_URL!,
@@ -50,20 +50,20 @@ export const { auth, signIn, signOut, handlers } = NextAuth({
   ],
   callbacks: {
     authorized({ auth }) {
-      return !!auth?.user;
+      return !!auth;
     },
-    async redirect({ url, baseUrl }) {
+    redirect({ url, baseUrl }) {
       const callbackUrl = url.includes('/login') ? baseUrl : url;
       return callbackUrl;
     },
-    async jwt({ token, user }) {
+    jwt({ token, user }) {
       if (user) {
         token.email = user.email;
         token.name = user.name;
       }
       return token;
     },
-    async session({ session, token }) {
+    session({ session, token }) {
       session.user.email = token.email as string;
       session.user.name = token.name as string;
       return session;

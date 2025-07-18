@@ -1,12 +1,9 @@
-import NextAuth from 'next-auth';
-import { authConfig } from './auth.config';
 import { NextRequest, NextResponse } from 'next/server';
 import { getToken } from 'next-auth/jwt';
 
 export async function middleware(req: NextRequest) {
   const token = await getToken({ req, secret: process.env.AUTH_SECRET! });
-  console.log('token', token);
-  console.log('secret', process.env.AUTH_SECRET);
+  const isAuthenticated = !!token && (!token.exp || token.exp > Math.floor(Date.now() / 1000));
 
   const protectedRoutes = ['/dashboard'];
   const authPage = ['/login'];
@@ -14,19 +11,17 @@ export async function middleware(req: NextRequest) {
 
   const isProtectedRoute = protectedRoutes.some((route) => pathname.startsWith(route));
 
-  if (isProtectedRoute && !token) {
-    const loginUrl = new URL('/login', req.url);
-    loginUrl.searchParams.set('callbackUrl', req.url);
-    return NextResponse.redirect(loginUrl);
+  if (!isAuthenticated && isProtectedRoute) {
+    return NextResponse.redirect(new URL('/login', req.url));
   }
 
-  if (authPage.includes(pathname) && token) {
+  if (isAuthenticated && authPage.includes(pathname)) {
     return NextResponse.redirect(new URL('/dashboard', req.url));
   }
 
   return NextResponse.next();
 }
+
 export const config = {
-  // https://nextjs.org/docs/app/building-your-application/routing/middleware#matcher
-  matcher: ['/((?!api|_next/static|_next/image|.*\\.png$).*)'],
+  matcher: ['/dashboard/:path*', '/login'],
 };
