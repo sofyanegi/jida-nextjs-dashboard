@@ -4,8 +4,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getToken } from 'next-auth/jwt';
 
 export async function middleware(req: NextRequest) {
-  const token = await getToken({ req, secret: process.env.AUTH_SECRET });
+  const token = await getToken({ req, secret: process.env.AUTH_SECRET! });
   console.log('token', token);
+  console.log('secret', process.env.AUTH_SECRET);
 
   const protectedRoutes = ['/dashboard'];
   const authPage = ['/login'];
